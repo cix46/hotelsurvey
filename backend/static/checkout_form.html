@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AS Otel Çeşme — Check-out Anketi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f0; --surface: #ffffff; --border: #e2e0d8;
+    --text: #1a1a1a; --muted: #888880; --accent: #40598e;
+    --accent-light: #eef1f8; --green: #2d7d4f; --green-light: #edf7f2;
+    --red: #c0392b; --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+  }
+  body { font-family: var(--font); background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem; }
+  .header { width: 100%; max-width: 860px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .hotel-logo { width: 42px; height: 42px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; }
+  .hotel-name { font-size: 15px; font-weight: 600; color: var(--text); }
+  .hotel-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .tabs { display: flex; gap: 4px; background: var(--border); padding: 3px; border-radius: 10px; }
+  .tab { padding: 6px 16px; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; background: transparent; color: var(--muted); font-family: var(--font); transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); font-weight: 500; }
+  .card { width: 100%; max-width: 860px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 1rem; }
+  .card-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .card-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+  .field { margin-bottom: 1.25rem; }
+  label { display: block; font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--mono); margin-bottom: 6px; }
+  input, select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: var(--font); color: var(--text); background: var(--bg); outline: none; transition: border-color 0.15s; }
+  input:focus, select:focus { border-color: var(--accent); background: white; }
+  .phone-wrap { display: flex; gap: 8px; }
+  .phone-prefix { width: 80px; flex-shrink: 0; text-align: center; font-family: var(--mono); font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+  .divider { height: 1px; background: var(--border); margin: 1.5rem 0; }
+  .delay-options { display: flex; gap: 8px; flex-wrap: wrap; }
+  .delay-btn { padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px; font-size: 12px; font-family: var(--mono); cursor: pointer; background: var(--bg); color: var(--muted); transition: all 0.15s; }
+  .delay-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .submit-btn { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 500; font-family: var(--font); cursor: pointer; margin-top: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.15s; }
+  .submit-btn:hover { opacity: 0.9; }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .wa-icon { width: 18px; height: 18px; fill: white; }
+
+  /* Upload area */
+  .upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.15s; background: var(--bg); }
+  .upload-area:hover, .upload-area.drag { border-color: var(--accent); background: var(--accent-light); }
+  .upload-icon { font-size: 32px; margin-bottom: 8px; }
+  .upload-text { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: var(--muted); }
+
+  /* Guest table */
+  .guest-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .guest-table th { padding: 8px 12px; text-align: left; font-size: 11px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .guest-table td { padding: 10px 12px; border-bottom: 1px solid #f5f5f3; }
+  .guest-table tr:hover td { background: #fafaf8; }
+  .guest-table tr.selected td { background: var(--accent-light); }
+  .check-col { width: 40px; text-align: center; }
+  input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+  .lang-badge { font-size: 10px; font-family: var(--mono); padding: 2px 7px; border-radius: 8px; background: var(--accent-light); color: var(--accent); }
+  .phone-input-sm { padding: 5px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: white; width: 140px; font-family: var(--mono); outline: none; }
+  .phone-input-sm:focus { border-color: var(--accent); }
+
+  /* Bulk actions */
+  .bulk-bar { display: flex; align-items: center; gap: 12px; padding: 10px 1rem; background: var(--accent-light); border-radius: 8px; margin-bottom: 1rem; }
+  .bulk-text { font-size: 13px; color: var(--accent); font-weight: 500; flex: 1; }
+  .bulk-btn { padding: 6px 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: white; font-size: 12px; cursor: pointer; font-family: var(--font); display: flex; align-items: center; gap: 6px; }
+  .bulk-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px); padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: transform 0.3s; z-index: 100; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--green); color: white; }
+  .toast.error { background: var(--red); color: white; }
+
+  /* Recent */
+  .recent { width: 100%; max-width: 860px; margin-top: 0; }
+  .recent-title { font-size: 11px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; padding-left: 4px; }
+  .recent-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .status-sent { background: var(--accent-light); color: var(--accent); font-size: 11px; font-family: var(--mono); padding: 2px 8px; border-radius: 10px; }
+  .status-error { background: #fdf0ee; color: var(--red); font-size: 11px; font-family: var(--mono); padding: 2px 8px; border-radius: 10px; }
+
+  .hidden { display: none; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="hotel-logo">🏨</div>
+    <div>
+      <div class="hotel-name">AS Otel Çeşme</div>
+      <div class="hotel-sub">Anket Gönderme Paneli</div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('tekli')">Tekli Gönderim</button>
+    <button class="tab" onclick="switchTab('toplu')">Toplu Gönderim (Excel)</button>
+  </div>
+</div>
+
+<!-- TEKLİ GÖNDERİM -->
+<div id="tab-tekli" class="card">
+  <div class="card-title">Check-out Anketi Gönder</div>
+  <div class="card-sub">Misafir bilgilerini girin, WhatsApp mesajı otomatik gönderilir.</div>
+  <div class="grid2">
+    <div class="field">
+      <label>Misafir Adı Soyadı</label>
+      <input type="text" id="name" placeholder="Halil ibrahim Çayır" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Oda Numarası</label>
+      <input type="text" id="room" placeholder="101" autocomplete="off">
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="field">
+      <label>Telefon Numarası</label>
+      <div class="phone-wrap">
+        <input class="phone-prefix" type="text" id="prefix" value="+90" readonly>
+        <input type="tel" id="phone" placeholder="532 123 45 67" autocomplete="off" maxlength="13">
+      </div>
+    </div>
+    <div class="field">
+      <label>Dil</label>
+      <select id="language">
+        <option value="tr">🇹🇷 Türkçe</option>
+        <option value="en">🇬🇧 English</option>
+        <option value="de">🇩🇪 Deutsch</option>
+      </select>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Mesaj Ne Zaman Gönderilsin?</div>
+  <div class="delay-options">
+    <button class="delay-btn active" data-val="0">Hemen</button>
+    <button class="delay-btn" data-val="30">30 dk sonra</button>
+    <button class="delay-btn" data-val="60">1 saat sonra</button>
+    <button class="delay-btn" data-val="120">2 saat sonra</button>
+  </div>
+  <button class="submit-btn" onclick="sendSingle()" id="sendBtn">
+    <svg class="wa-icon" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+    WhatsApp Anketi Gönder
+  </button>
+</div>
+
+<!-- TOPLU GÖNDERİM -->
+<div id="tab-toplu" class="card hidden">
+  <div class="card-title">Toplu Gönderim — Excel Yükle</div>
+  <div class="card-sub">Elektraweb'den "Misafir Rezervasyonları" raporunu Excel olarak indirin ve buraya yükleyin.</div>
+
+  <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="handleDrop(event)">
+    <div class="upload-icon">📊</div>
+    <div class="upload-text">Excel dosyasını buraya sürükleyin veya tıklayın</div>
+    <div class="upload-sub">.xlsx veya .xls formatı · Elektraweb Misafir Rezervasyonları raporu</div>
+  </div>
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFile(this.files[0])">
+
+  <div id="guestListSection" class="hidden" style="margin-top:1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div style="font-size:14px;font-weight:500;" id="listTitle">Misafir Listesi</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div style="font-size:12px;font-weight:500;margin-right:4px;">Gecikme:</div>
+        <div class="delay-options" id="bulkDelayOptions">
+          <button class="delay-btn active" data-val="0">Hemen</button>
+          <button class="delay-btn" data-val="30">30 dk</button>
+          <button class="delay-btn" data-val="60">1 saat</button>
+          <button class="delay-btn" data-val="120">2 saat</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="bulkBar" class="bulk-bar hidden">
+      <span class="bulk-text" id="bulkText">0 misafir seçildi</span>
+      <button class="bulk-btn" id="bulkSendBtn" onclick="sendBulk()">
+        <svg style="width:14px;height:14px;fill:white" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+        Seçilenlere Gönder
+      </button>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="guest-table">
+        <thead>
+          <tr>
+            <th class="check-col"><input type="checkbox" id="selectAll" onchange="toggleAll(this)"></th>
+            <th>Misafir Adı</th>
+            <th>Oda</th>
+            <th>Telefon</th>
+            <th>Dil</th>
+            <th>Ayrılış</th>
+            <th>Durum</th>
+          </tr>
+        </thead>
+        <tbody id="guestTableBody"></tbody>
+      </table>
+    </div>
+
+    <div id="progressSection" class="hidden" style="margin-top:1rem;">
+      <div style="font-size:12px;color:var(--muted);font-family:monospace;" id="progressText">Gönderiliyor...</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Son Gönderimler -->
+<div class="recent" id="recentSection" style="display:none">
+  <div class="recent-title">Son Gönderimler</div>
+  <div id="recentList"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_URL = 'http://127.0.0.1:8000';
+let selectedDelay = 0;
+let bulkDelay = 0;
+let guests = [];
+let recentItems = [];
+
+// Tab
+function switchTab(tab) {
+  document.getElementById('tab-tekli').classList.toggle('hidden', tab !== 'tekli');
+  document.getElementById('tab-toplu').classList.toggle('hidden', tab !== 'toplu');
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (i === 0) === (tab === 'tekli')));
+}
+
+// Tekli delay
+document.querySelectorAll('#tab-tekli .delay-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#tab-tekli .delay-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedDelay = parseInt(btn.dataset.val);
+  });
+});
+
+// Toplu delay
+document.querySelectorAll('#bulkDelayOptions .delay-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#bulkDelayOptions .delay-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    bulkDelay = parseInt(btn.dataset.val);
+  });
+});
+
+// Telefon maskesi
+document.getElementById('phone').addEventListener('input', function(e) {
+  let v = e.target.value.replace(/\D/g, '');
+  if (v.length > 10) v = v.slice(0, 10);
+  let f = '';
+  if (v.length > 0) f = v.slice(0, 3);
+  if (v.length > 3) f += ' ' + v.slice(3, 6);
+  if (v.length > 6) f += ' ' + v.slice(6, 8);
+  if (v.length > 8) f += ' ' + v.slice(8, 10);
+  e.target.value = f;
+});
+
+function formatPhone(raw) {
+  if (!raw) return '';
+  let p = String(raw).replace(/\D/g, '');
+  if (p.startsWith('90') && p.length > 10) p = p.slice(2);
+  if (p.startsWith('0')) p = p.slice(1);
+  return '+90' + p;
+}
+
+function detectLang(uyruk) {
+  if (!uyruk) return 'tr';
+  const u = uyruk.toString().toUpperCase();
+  if (u === 'TR') return 'tr';
+  if (u === 'DE' || u === 'AT' || u === 'CH') return 'de';
+  return 'en';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = type === 'success' ? '✓ ' + msg : '✕ ' + msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// Excel yükleme
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadArea').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+}
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { raw: false });
+      parseGuests(data);
+    } catch(err) {
+      showToast('Dosya okunamadı: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseGuests(data) {
+  guests = data.map((row, i) => {
+    // Kolon isimlerini normalize et
+    const name  = row['Misafir Adı'] || row['misafir adi'] || row['Ad Soyad'] || '';
+    const room  = row['Oda No'] || row['Oda'] || row['oda no'] || '';
+    const phone = row['Telefon'] || row['telefon'] || row['Tel'] || '';
+    const uyruk = row['Uyruk'] || row['uyruk'] || row['Dil'] || 'TR';
+    const checkout = row['Ayrılış'] || row['Ayrilis'] || row['Check-out'] || '';
+    return {
+      id: i,
+      name: name.trim(),
+      room: String(room).trim(),
+      phone: String(phone).trim(),
+      lang: detectLang(uyruk),
+      checkout: checkout,
+      status: 'bekliyor',
+      selected: false
+    };
+  }).filter(g => g.name && g.phone && g.phone !== '1');
+
+  document.getElementById('listTitle').textContent = `Misafir Listesi (${guests.length} kişi)`;
+  document.getElementById('guestListSection').classList.remove('hidden');
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('guestTableBody');
+  const langLabel = { tr: '🇹🇷 TR', en: '🇬🇧 EN', de: '🇩🇪 DE' };
+  const statusHtml = {
+    bekliyor: '<span style="color:var(--muted);font-size:11px;font-family:monospace">Bekliyor</span>',
+    gonderildi: '<span style="background:#edf7f2;color:#2d7d4f;font-size:11px;font-family:monospace;padding:2px 8px;border-radius:8px">Gönderildi ✓</span>',
+    hata: '<span style="background:#fdf0ee;color:#c0392b;font-size:11px;font-family:monospace;padding:2px 8px;border-radius:8px">Hata</span>',
+  };
+
+  tbody.innerHTML = guests.map(g => `
+    <tr class="${g.selected ? 'selected' : ''}" id="row-${g.id}">
+      <td class="check-col">
+        <input type="checkbox" ${g.selected ? 'checked' : ''} ${g.status === 'gonderildi' ? 'disabled' : ''}
+          onchange="toggleGuest(${g.id}, this.checked)">
+      </td>
+      <td style="font-weight:500">${g.name}</td>
+      <td style="font-family:monospace;color:var(--muted)">${g.room}</td>
+      <td>
+        <input class="phone-input-sm" value="${g.phone}" 
+          onchange="updatePhone(${g.id}, this.value)" 
+          placeholder="+90 5XX XXX XX XX"
+          ${g.status === 'gonderildi' ? 'disabled' : ''}>
+      </td>
+      <td><span class="lang-badge">${langLabel[g.lang] || g.lang}</span></td>
+      <td style="font-size:12px;color:var(--muted);font-family:monospace">${g.checkout || '—'}</td>
+      <td>${statusHtml[g.status] || g.status}</td>
+    </tr>
+  `).join('');
+
+  updateBulkBar();
+}
+
+function toggleGuest(id, checked) {
+  const g = guests.find(g => g.id === id);
+  if (g) g.selected = checked;
+  const row = document.getElementById('row-' + id);
+  if (row) row.classList.toggle('selected', checked);
+  updateBulkBar();
+}
+
+function toggleAll(cb) {
+  guests.forEach(g => { if (g.status !== 'gonderildi') g.selected = cb.checked; });
+  renderTable();
+}
+
+function updatePhone(id, val) {
+  const g = guests.find(g => g.id === id);
+  if (g) g.phone = val;
+}
+
+function updateBulkBar() {
+  const selected = guests.filter(g => g.selected && g.status !== 'gonderildi');
+  const bar = document.getElementById('bulkBar');
+  const text = document.getElementById('bulkText');
+  bar.classList.toggle('hidden', selected.length === 0);
+  text.textContent = `${selected.length} misafir seçildi`;
+}
+
+// Tekli gönderim
+async function sendSingle() {
+  const name  = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const room  = document.getElementById('room').value.trim();
+  const lang  = document.getElementById('language').value;
+
+  if (!name || !phone || !room) { showToast('Lütfen tüm alanları doldurun.', 'error'); return; }
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="opacity:.7">Gönderiliyor...</span>';
+
+  const ok = await triggerSurvey(name, formatPhone(phone), room, lang, selectedDelay);
+  if (ok) {
+    showToast(name + ' için anket gönderildi!', 'success');
+    addRecent(name, room, formatPhone(phone), ok ? 'Gönderildi' : 'Hata');
+    document.getElementById('name').value = '';
+    document.getElementById('phone').value = '';
+    document.getElementById('room').value = '';
+  } else {
+    showToast('Gönderim başarısız.', 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg class="wa-icon" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg> WhatsApp Anketi Gönder`;
+}
+
+// Toplu gönderim
+async function sendBulk() {
+  const selected = guests.filter(g => g.selected && g.status !== 'gonderildi');
+  if (selected.length === 0) return;
+
+  const btn = document.getElementById('bulkSendBtn');
+  btn.disabled = true;
+
+  document.getElementById('progressSection').classList.remove('hidden');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+
+  let done = 0;
+  for (const g of selected) {
+    progressText.textContent = `Gönderiliyor: ${g.name} (${done + 1}/${selected.length})`;
+    const phone = formatPhone(g.phone);
+    if (!phone || phone.length < 10) {
+      g.status = 'hata';
+    } else {
+      const ok = await triggerSurvey(g.name, phone, g.room, g.lang, bulkDelay);
+      g.status = ok ? 'gonderildi' : 'hata';
+      g.selected = false;
+    }
+    done++;
+    progressFill.style.width = (done / selected.length * 100) + '%';
+    renderTable();
+    await new Promise(r => setTimeout(r, 500)); // Rate limiting
+  }
+
+  progressText.textContent = `Tamamlandı! ${done} mesaj gönderildi.`;
+  btn.disabled = false;
+  showToast(`${selected.length} misafire anket gönderildi!`, 'success');
+}
+
+async function triggerSurvey(name, phone, room, lang, delay) {
+  try {
+    const res = await fetch(API_URL + '/api/surveys/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        guest_name: name, phone, room_number: room,
+        checkout_at: new Date().toISOString(),
+        language: lang, delay_minutes: delay
+      })
+    });
+    return res.ok;
+  } catch (e) { return false; }
+}
+
+function addRecent(name, room, phone, status) {
+  recentItems.unshift({ name, room, phone, status });
+  if (recentItems.length > 8) recentItems.pop();
+  const section = document.getElementById('recentSection');
+  const list = document.getElementById('recentList');
+  section.style.display = 'block';
+  list.innerHTML = recentItems.map(item => `
+    <div class="recent-item">
+      <div>
+        <div style="font-weight:500;font-size:13px">${item.name} · Oda ${item.room}</div>
+        <div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:2px">${item.phone}</div>
+      </div>
+      <span class="${item.status === 'Gönderildi' ? 'status-sent' : 'status-error'}">${item.status}</span>
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>
